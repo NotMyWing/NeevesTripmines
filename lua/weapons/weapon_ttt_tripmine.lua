@@ -1,46 +1,46 @@
 AddCSLuaFile()
 
-SWEP.HoldType				= "normal"
+SWEP.HoldType              = "normal"
 
 if CLIENT then
-    SWEP.PrintName			= "tripmine_name"
-    SWEP.Slot				= 6
+    SWEP.PrintName         = "tripmine_name"
+    SWEP.Slot              = 6
 
-    SWEP.ViewModelFlip       = false
-    SWEP.ViewModelFOV        = 10
-    SWEP.DrawCrosshair       = false
-    
+    SWEP.ViewModelFlip     = false
+    SWEP.ViewModelFOV      = 10
+    SWEP.DrawCrosshair     = false
+
     SWEP.EquipMenuData = {
         type = "item_weapon",
         desc = "tripmine_desc"
     };
 
-    SWEP.Icon				= "vgui/ttt/icon_tripmine"
+    SWEP.Icon              = "vgui/ttt/icon_tripmine"
 end
 
-SWEP.Base					= "weapon_tttbase"
+SWEP.Base                  = "weapon_tttbase"
 
-SWEP.ViewModel				= "models/weapons/v_crowbar.mdl"
-SWEP.WorldModel				= "models/weapons/w_slam.mdl"
+SWEP.ViewModel             = "models/weapons/v_crowbar.mdl"
+SWEP.WorldModel            = "models/weapons/w_slam.mdl"
 
-SWEP.Primary.ClipSize		= -1
-SWEP.Primary.DefaultClip	= -1
-SWEP.Primary.Automatic		= true
-SWEP.Primary.Ammo			= "none"
-SWEP.Primary.Delay			= 1.0
+SWEP.Primary.ClipSize      = -1
+SWEP.Primary.DefaultClip   = -1
+SWEP.Primary.Automatic     = true
+SWEP.Primary.Ammo          = "none"
+SWEP.Primary.Delay         = 1.0
 
-SWEP.Secondary.ClipSize		= -1
-SWEP.Secondary.DefaultClip	= -1
-SWEP.Secondary.Automatic	= true
-SWEP.Secondary.Ammo			= "none"
-SWEP.Secondary.Delay		= 1.0
+SWEP.Secondary.ClipSize    = -1
+SWEP.Secondary.DefaultClip = -1
+SWEP.Secondary.Automatic   = true
+SWEP.Secondary.Ammo        = "none"
+SWEP.Secondary.Delay       = 1.0
 
-SWEP.Kind					= WEAPON_EQUIP
-SWEP.CanBuy					= {ROLE_TRAITOR}
-SWEP.LimitedStock			= true
+SWEP.Kind                  = WEAPON_EQUIP
+SWEP.CanBuy                = {ROLE_TRAITOR}
+SWEP.LimitedStock          = true
 
-SWEP.AllowDrop				= true
-SWEP.NoSights				= true
+SWEP.AllowDrop             = true
+SWEP.NoSights              = true
 
 function SWEP:PrimaryAttack()
     self:SetNextSecondaryFire(CurTime() + self.Secondary.Delay)
@@ -100,8 +100,8 @@ end
 
 function SWEP:OnRemove()
     if CLIENT
-        && IsValid(self.Owner) 
-        && self.Owner == LocalPlayer() 
+        && IsValid(self.Owner)
+        && self.Owner == LocalPlayer()
         && self.Owner:Alive()
     then
         RunConsoleCommand("lastinv")
@@ -136,7 +136,7 @@ function SWEP:PostDrawViewModel(vm, weapon, ply)
 
     local ignore = {self.Owner, self}
     local spos = ply:GetShootPos()
-    local epos = spos 
+    local epos = spos
         + ply:GetAimVector() * 8000
 
     local tr = util.TraceLine {
@@ -151,12 +151,12 @@ function SWEP:PostDrawViewModel(vm, weapon, ply)
     then
         return
     end
-    
+
     local matrix = Matrix()
     matrix:Scale(Vector(0.75, 0.75, 0.25))
     matrix:Scale(Vector(1, 1, 1) * 0.1)
     matrix:Translate(Vector(0, 0, 2))
-    
+
     local ang = tr.HitNormal:Angle()
     ang:RotateAroundAxis(ang:Right(), -90)
 
@@ -168,14 +168,14 @@ function SWEP:PostDrawViewModel(vm, weapon, ply)
     self.GhostModel:SetAngles(ang)
     self.GhostModel:DrawModel()
     render.SetBlend(1)
-    
+
     local pos = self.GhostModel:GetPos()
         + ang:Forward() * -0.2
         + ang:Up()      * 0.1
 
     render.SetMaterial(laser)
     render.StartBeam(2)
-        render.AddBeam(pos, 0.5, 2, Color(255, 0, 0, 128)) 
-        render.AddBeam(pos + ang:Up() * 1, 0.5, 3, Color(255, 0, 0, 128)) 
+        render.AddBeam(pos, 0.5, 2, Color(255, 0, 0, 128))
+        render.AddBeam(pos + ang:Up() * 1, 0.5, 3, Color(255, 0, 0, 128))
     render.EndBeam()
 end

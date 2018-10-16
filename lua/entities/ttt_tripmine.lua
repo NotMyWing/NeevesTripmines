@@ -129,21 +129,21 @@ function ENT:Think()
                 + ang:Up() * -1.33
 
             local trLine = util.TraceLine {
-                start 			= pos
-                , endpos 		= pos + ang:Up() * cvarLaserLength:GetFloat() || 512
-                , mask 			= MASK_SOLID
-                , filter 		= self
-                , ignoreworld	= false
+                start         = pos
+                , endpos      = pos + ang:Up() * cvarLaserLength:GetFloat() || 512
+                , mask        = MASK_SOLID
+                , filter      = self
+                , ignoreworld = false
             }
 
             local dist = trLine.StartPos:Distance(trLine.HitPos)
             local tr = util.TraceHull {
-                start 			= pos
-                , endpos 		= pos + ang:Up() * dist
-                , maxs 			= ang:Forward() *  4 + ang:Right() *  4
-                , mins 			= ang:Forward() * -4 + ang:Right() * -4
-                , mask 			= MASK_SOLID
-                , filter 		= self
+                start    = pos
+                , endpos = pos + ang:Up() * dist
+                , maxs   = ang:Forward() *  4 + ang:Right() *  4
+                , mins   = ang:Forward() * -4 + ang:Right() * -4
+                , mask   = MASK_SOLID
+                , filter = self
             }
 
             local ent = tr.Entity
@@ -201,7 +201,7 @@ if CLIENT then
 
     hook.Add("PreDrawTranslucentRenderables", "Neeve Claymores Lasers", function()
         for k, v in pairs(ents.GetAll()) do
-            if v.Enabled 
+            if v.Enabled
                 && v:GetClass() == "ttt_tripmine"
             then
                 local ang = v:GetAngles()
@@ -237,9 +237,9 @@ if CLIENT then
             if v:GetClass() == "ttt_tripmine" && client:GetTraitor() then
                 local ang = v:GetAngles()
                 local pos = v:GetPos()
-                    + ang:Forward() * -2.0 
+                    + ang:Forward() * -2.0
                     + ang:Up() * -1.3
-                    
+
                 local tr = util.TraceLine {
                     start         = pos
                     , endpos      = pos + ang:Up() * cvarLaserLength:GetFloat() || 512
@@ -247,7 +247,7 @@ if CLIENT then
                     , mask        = MASK_SOLID
                     , ignoreworld = false
                 }
-                
+
                 local distance = (tr.StartPos):Distance(tr.HitPos)
                 local dV = client:GetPos() - tr.StartPos
                 local v = math.Clamp(dV:Dot(tr.Normal), 0, distance) * tr.Normal
