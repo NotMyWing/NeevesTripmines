@@ -4,5 +4,10 @@
     "tags": [
         "fun",
         "comic"
+    ],
+    "ignore": [
+        ".git*",
+        "README.md",
+        "LICENSE"
     ]
 }
