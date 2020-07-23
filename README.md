@@ -8,14 +8,23 @@ I've been using these mines on my server for quite a long time, which means they
 * *are dangerous to everyone!* Yes, you will blow up even if you're a traitor
 * *can be placed almost anywhere*, unless you're planning to put it on a prop
 * *are scannable by detectives*, revealing traitors' fingerprints
-* *configurable*! Adjust the damage, beam length, blast radius and activation time to your needs
+* *configurable*! Adjust the damage, beam length, blast radius, activation time and more to your needs
 * *are visible in your hands*. No, that person didn't kill you for no reason
 
 # Console commands
-* ttt_tripmine_activationtime 0.25
+## Server
 * ttt_tripmine_laserlength 512
 * ttt_tripmine_damage 260
 * ttt_tripmine_blastradius 260
+* ttt_tripmine_activationtime 0.25
+* ttt_tripmine_sleeptime 2
+
+## Client
+* ttt_tripmine_tooltip_disable 0
+* ttt_tripmine_tooltip_mindistance 800
+* ttt_tripmine_tooltip_notext 0
+* ttt_tripmine_tooltip_noicon 0
+* ttt_tripmine_tooltip_dots_percentage 15
 
 # Localize!
 If you feel like helping me localizing this addon, please do!
