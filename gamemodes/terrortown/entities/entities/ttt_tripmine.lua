@@ -230,13 +230,6 @@ if CLIENT then
         , "Disables the trip mine world tooltip. Why?"
     )
 
-    local cvarTripTooltipPreferTripMines_cl = CreateConVar(
-        "ttt_tripmine_tooltip_prefer_tripmines"
-        , 0
-        , bit.bor(FCVAR_ARCHIVE)
-        , "Defines whether the tooltip should prefer tripmines and not the closest points to lasers"
-    )
-
     local cvarTripTooltipDistance_cl = CreateConVar(
         "ttt_tripmine_tooltip_mindistance"
         , 800
