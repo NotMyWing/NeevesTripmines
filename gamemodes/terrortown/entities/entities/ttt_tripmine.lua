@@ -105,11 +105,15 @@ function ENT:UseOverride(user)
         && (user:IsActiveTraitor() || user == self.Owner)
     then
         self:Remove()
-
-        local wep = user:Give("weapon_ttt_tripmine")
-        if IsValid(wep) then
-            wep.fingerprints = wep.fingerprints || {}
-            table.Add(wep.fingerprints, self.fingerprints || {})
+        
+        if (user:HasWeapon("weapon_ttt_tripmine")) then
+            user:SetAmmo(user:GetAmmoCount("neeve_tripmines") + 1, "neeve_tripmines")
+        else
+            local wep = user:Give("weapon_ttt_tripmine")
+            if IsValid(wep) then
+                wep.fingerprints = wep.fingerprints || {}
+                table.Add(wep.fingerprints, self.fingerprints || {})
+            end
         end
     end
 end

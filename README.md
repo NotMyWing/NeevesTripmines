@@ -18,6 +18,7 @@ I've been using these mines on my server for quite a long time, which means they
 * ttt_tripmine_blastradius 260
 * ttt_tripmine_activationtime 0.25
 * ttt_tripmine_sleeptime 2
+* ttt_tripmine_buy_count 1
 
 ## Client
 * ttt_tripmine_tooltip_disable 0

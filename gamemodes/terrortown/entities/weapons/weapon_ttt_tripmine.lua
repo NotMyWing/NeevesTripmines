@@ -1,5 +1,9 @@
 AddCSLuaFile()
 
+game.AddAmmoType({
+    name = "neeve_tripmines"
+})
+
 SWEP.HoldType              = "normal"
 
 if CLIENT then
@@ -23,11 +27,11 @@ SWEP.Base                  = "weapon_tttbase"
 SWEP.ViewModel             = "models/weapons/v_crowbar.mdl"
 SWEP.WorldModel            = "models/weapons/w_slam.mdl"
 
-SWEP.Primary.ClipSize      = -1
-SWEP.Primary.DefaultClip   = -1
+SWEP.Primary.ClipSize      = 1
+SWEP.Primary.DefaultClip   = 1
 SWEP.Primary.Automatic     = true
-SWEP.Primary.Ammo          = "none"
-SWEP.Primary.Delay         = 1.0
+SWEP.Primary.Ammo          = "neeve_tripmines"
+SWEP.Primary.Delay         = 1
 
 SWEP.Secondary.ClipSize    = -1
 SWEP.Secondary.DefaultClip = -1
@@ -42,9 +46,34 @@ SWEP.LimitedStock          = true
 SWEP.AllowDrop             = true
 SWEP.NoSights              = true
 
+local cvarTripminesBuyCount = CreateConVar(
+    "ttt_tripmine_buy_count"
+    , 1
+    , bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED)
+    , "How many tripmines should the buyer receive?"
+)
+
 function SWEP:PrimaryAttack()
-    self:SetNextSecondaryFire(CurTime() + self.Secondary.Delay)
-    self:TripmineStick()
+    if (self:Clip1() > 0 and self:TripmineStick()) then
+        self:SetNextPrimaryFire(CurTime() + self.Primary.Delay)
+        self:TakePrimaryAmmo(1)
+        if (self:Ammo1() + self:Clip1() <= 0) then
+            self:Remove()
+        else
+            self:Reload()
+        end
+    else
+        self:SetNextPrimaryFire(CurTime() + 0.5)
+    end
+end
+
+function SWEP:Think()
+    if (self:Clip1() == 0 and self:Ammo1() > 0) then
+        self:TakePrimaryAmmo(1)
+        self:SetClip1(1)
+    elseif (SERVER and self:Clip1() + self:Ammo1() == 0) then
+        self:Remove()
+    end
 end
 
 local throwsound = Sound("Weapon_SLAM.SatchelThrow")
@@ -87,7 +116,7 @@ function SWEP:TripmineStick()
                         phys:EnableMotion(false)
                     end
 
-                    self:Remove()
+                    return true
                 end
             end
         end
@@ -178,4 +207,13 @@ function SWEP:PostDrawViewModel(vm, weapon, ply)
         render.AddBeam(pos, 0.5, 2, Color(255, 0, 0, 128))
         render.AddBeam(pos + ang:Up() * 1, 0.5, 3, Color(255, 0, 0, 128))
     render.EndBeam()
+end
+
+function SWEP:WasBought(buyer)
+    if IsValid(buyer) then
+        local additional = cvarTripminesBuyCount:GetInt() - 1
+        if additional > 0 then
+            buyer:SetAmmo(buyer:GetAmmoCount("neeve_tripmines") + additional, "neeve_tripmines")
+        end
+    end
 end
