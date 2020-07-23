@@ -234,12 +234,12 @@ if CLIENT then
         "ttt_tripmine_tooltip_prefer_tripmines"
         , 0
         , bit.bor(FCVAR_ARCHIVE)
-        , "Defines whether the tooltip should prefer tripmines and not closest points to lasers"
+        , "Defines whether the tooltip should prefer tripmines and not the closest points to lasers"
     )
 
     local cvarTripTooltipDistance_cl = CreateConVar(
         "ttt_tripmine_tooltip_mindistance"
-        , 384
+        , 800
         , bit.bor(FCVAR_ARCHIVE)
         , "Defines the minimum distance at which the tooltip should appear"
     )
@@ -256,6 +256,13 @@ if CLIENT then
         , 0
         , bit.bor(FCVAR_ARCHIVE)
         , "Disables the tooltip trip mine icon"
+    )
+
+    local cvarTripTooltipDotsPercentage_cl = CreateConVar(
+        "ttt_tripmine_tooltip_dots_percentage"
+        , 15
+        , bit.bor(FCVAR_ARCHIVE)
+        , "From 0 to 100%, how many tripmine laser dots should be visible to you if you're a Traitor"
     )
 
     surface.CreateFont( "Neeve Claymores Font", {
@@ -324,13 +331,21 @@ if CLIENT then
     hook.Add("HUDPaint", "Neeve Claymores Indicators", function()
         local client = LocalPlayer()
 
-        if !client:GetTraitor() or cvarTripTooltipDisable_cl:GetBool() then
+        if !IsValid(client) or !client:GetTraitor() or cvarTripTooltipDisable_cl:GetBool() then
             return
         end
 
         local frameTime = RealFrameTime()
         surface.DisableClipping(true)
 
+        -- Helpful stuff
+        local HALF_SCREEN_WIDTH = ScrW() / 2
+        local HALF_SCREEN_HEIGHT = ScrH() / 2
+        local screenXRadius = HALF_SCREEN_WIDTH * 0.8
+        local screenYRadius = HALF_SCREEN_HEIGHT * 0.8
+        local eyePos = client:EyePos()
+        local aimVector = client:GetAimVector()
+        
         for k, v in pairs(ents.GetAll()) do
             if v:GetClass() == "ttt_tripmine" then
                 local entId = v:EntIndex()
@@ -350,34 +365,111 @@ if CLIENT then
 
                 -- Get the dot of the player position to the laser
                 local distance = (tr.StartPos):Distance(tr.HitPos)
-                local dVec = client:GetPos() - tr.StartPos
+                local dVec = eyePos - tr.StartPos
                 local vec = math.Clamp(dVec:Dot(tr.Normal), 0, distance) * tr.Normal
 
-                distance = (tr.StartPos + vec):Distance(client:GetPos())
+                distance = (tr.StartPos + vec):Distance(eyePos)
 
-                local minDst = cvarTripTooltipDistance_cl:GetFloat() || 384
+                local minDst = cvarTripTooltipDistance_cl:GetFloat()
                 if minDst >= distance then
-                    -- Helpful stuff
-                    local HALF_SCREEN_WIDTH = ScrW() / 2
-                    local HALF_SCREEN_HEIGHT = ScrH() / 2
-                    local screenXRadius = HALF_SCREEN_WIDTH * 0.8
-                    local screenYRadius = HALF_SCREEN_HEIGHT * 0.8
-
-                    -- Check the convar if player prefers tripmines, and choose a point
-                    local laserVec
-                    if (!v.Enabled || cvarTripTooltipPreferTripMines_cl:GetBool()) then
-                        laserVec = tr.StartPos
-                    else
-                        laserVec = tr.StartPos + vec
-                    end
-
                     -- Define the alpha modifier based on the current distance
                     local alphaMod = 2 * math.Clamp(1 - (distance / minDst), 0, 1)
 
+                    local laserVec
+                    do
+                        -- Define an orthogonal vector from the player position towards the laser
+                        local dotPos = ang:Up():Dot(eyePos - pos)
+                        local playerToLaserOrtho = ((pos + ang:Up() * dotPos) - eyePos)
+                        local playerToLaserOrtho_normalized = playerToLaserOrtho:GetNormalized()
+
+                        -- Project the aim vector onto the plane defined by the laser direction
+                        -- and the orthogonal vector we defined above
+                        local cross = ang:Up():Cross(playerToLaserOrtho_normalized)
+                        local projection = (aimVector - (aimVector:Dot(cross)) * cross):GetNormalized()
+
+                        -- Calculate the distance between E and P based on the length of CP and
+                        -- the angle between EP and CP.
+                        --
+                        -- p is the projected normalized aim vector
+                        --
+                        -- Laser ---E-----C----------------->
+                        --           \    |
+                        --            \   |
+                        --           _ \  |
+                        --           p  \ |
+                        --                P (player)
+                        --
+                        local eyeDistance = math.abs(math.tan(0.55 * math.acos(
+                                playerToLaserOrtho_normalized:Dot(projection)
+                            ))) * playerToLaserOrtho:Length()
+
+                        local sign = projection:Dot(ang:Up()) > 0 and 1 or -1 
+
+                        local traceLength = tr.HitPos:Distance(pos)
+                        local d = math.Clamp(dotPos + eyeDistance * sign, 0, traceLength)
+
+                        -- Export the vector
+                        laserVec = (pos + ang:Up() * d)
+
+                        -- Draw the boxy line!
+                        cam.Start3D()
+                            local scale = 0.5
+                            local box = scale * Vector(1, 1, 1)
+                            local shrunk = box - Vector(1, 1, 1) * 0.1                            
+
+                            local count = math.floor(traceLength / 4)
+
+                            -- Determine the leftmost and rightmost dots so we don't over-render things
+                            local visible = math.Clamp(cvarTripTooltipDotsPercentage_cl:GetFloat(), 0, 100) / 100
+                            local percentage = d / traceLength
+                            local leftBoundary = math.Round(math.max(0, (count * percentage) - (count * visible)))
+                            local rightBoundary = math.Round(math.min(count, (count * percentage) + (count * visible)))
+                            
+                            -- Boring stuff
+                            render.SetColorMaterial()
+                            render.ClearStencil()
+
+                            -- Draw the dotted line across the laser, from the leftmost visible
+                            -- dot the the rightmost visible dot
+                            for i = leftBoundary, rightBoundary do
+                                local alphaMod = alphaMod - (math.abs((i * traceLength / count) - d) / (traceLength * visible / 2))
+
+                                local colorMask = Color(255, 255, 255, 255)
+                                local colorBox = Color(255, 0, 0, math.Clamp(220 * alphaMod, 0, 255))
+                                local colorShrunk = Color(0, 0, 0, math.Clamp(64 * alphaMod, 0, 255))
+
+                                local vec = pos + ang:Up() * (i * traceLength / count)
+
+                                render.SetStencilEnable(true)
+                                render.SetStencilTestMask(0xFF)
+                                render.SetStencilWriteMask(0xFF)
+                                render.SetStencilReferenceValue(0x01)
+
+                                -- Punch holes
+                                render.SetStencilCompareFunction(STENCIL_NEVER)
+                                render.SetStencilFailOperation(STENCIL_REPLACE)
+                                render.SetStencilZFailOperation(STENCIL_REPLACE)
+                                render.DrawBox(vec, Angle(), -shrunk, shrunk, colorMask)
+
+                                -- Draw boxes
+                                render.SetStencilCompareFunction(STENCIL_GREATER)
+                                render.SetStencilFailOperation(STENCIL_KEEP)
+                                render.SetStencilZFailOperation(STENCIL_KEEP)
+                                render.DrawBox(vec, Angle(), -box, box, colorBox)
+
+                                render.SetStencilEnable(false)
+                                render.DrawBox(vec, Angle(), -shrunk, shrunk, colorShrunk)
+                            end
+                        cam.End3D()
+                    end
+
                     -- Calculate the on-screen point, and the distance to the screen center
-                    laserVec = laserVec:ToScreen()
-                    local localScreenX = laserVec.x
-                    local localScreenY = laserVec.y
+                    local onScreen = laserVec:ToScreen()
+                    onScreen.x = math.Clamp(onScreen.x, 0, ScrW())
+                    onScreen.y = math.Clamp(onScreen.y, 0, ScrH())
+
+                    local localScreenX = onScreen.x
+                    local localScreenY = onScreen.y
                     local magLocal = math.sqrt((localScreenX - HALF_SCREEN_WIDTH)^2 + (localScreenY - HALF_SCREEN_HEIGHT)^2)
                     
                     -- Calculate the angle of the on-screen point
