@@ -20,6 +20,8 @@ I've been using these mines on my server for quite a long time, which means they
 * ttt_tripmine_sleeptime 2
 * ttt_tripmine_buy_count 1
 * ttt_tripmine_explode_on_break 0
+* ttt_tripmine_sound_activation 1
+* ttt_tripmine_sound_plant 1
 
 ## Client
 * ttt_tripmine_tooltip_disable 0

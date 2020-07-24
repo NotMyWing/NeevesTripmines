@@ -67,6 +67,20 @@ local cvarLaserOpacity = CreateConVar(
     , "Defines the trip mine laser opacity, from 0 to 100%"
 )
 
+local cvarPlantSound = CreateConVar(
+    "ttt_tripmine_sound_plant"
+    , 1
+    , bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED)
+    , "Defines whether the trip mine should emit sound when planted"
+)
+
+local cvarActivationSound = CreateConVar(
+    "ttt_tripmine_sound_activation"
+    , 1
+    , bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED)
+    , "Defines whether the mine should emit sound when activated"
+)
+
 local drawMatrix = Matrix()
 drawMatrix:Scale(Vector(0.75, 0.75, 0.25))
 drawMatrix:Translate(Vector(0, 0, -6))
@@ -77,6 +91,9 @@ function ENT:Draw()
     self:EnableMatrix("RenderMultiply", drawMatrix)
     self:DrawModel()
 end
+
+local plantSound = Sound( "Weapon_SLAM.TripMineMode" )
+local activateSound = Sound("tripmine/stickybomblauncher_det.wav")
 
 function ENT:Initialize()
     self:SetModel(self.Model)
@@ -89,6 +106,10 @@ function ENT:Initialize()
     if SERVER then
         self:SetUseType(SIMPLE_USE)
         self:SetMaxHealth(10)
+
+        if cvarPlantSound:GetBool() then
+            sound.Play(plantSound, self:GetPos(), 50, 120)
+        end
     else
         tripMines_guiWasRendering[self:EntIndex()] = nil
         self.InitTime = CurTime()
@@ -100,8 +121,12 @@ function ENT:Initialize()
         if (IsValid(self)) then
             self.Enabled = true
 
-            -- Create a "raytracing" dummy
             if (SERVER) then
+                if cvarActivationSound:GetBool() then
+                    sound.Play(activateSound, self:GetPos(), 50, 110)
+                end
+
+                -- Create a "raytracing" dummy
                 local dummy = ents.Create( "ttt_tripmine_laser_dummy" )
                 local ang = self:GetAngles()
                 local pos = self:GetPos()
