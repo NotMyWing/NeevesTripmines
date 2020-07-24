@@ -53,6 +53,13 @@ local cvarSleepTime = CreateConVar(
     , "Defines the time after which a tripmine starts emitting laser"
 )
 
+local cvarExplodeOnBreak = CreateConVar(
+    "ttt_tripmine_explode_on_break"
+    , 0
+    , bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED)
+    , "Defines whether the trip mine should explode when destroyed"
+)
+
 local drawMatrix = Matrix()
 drawMatrix:Scale(Vector(0.75, 0.75, 0.25))
 drawMatrix:Translate(Vector(0, 0, -6))
@@ -137,7 +144,11 @@ function ENT:OnTakeDamage(dmginfo)
 
     self:SetHealth(self:Health() - dmginfo:GetDamage())
     if self:Health() <= 0 then
-        self:Remove()
+        if (cvarExplodeOnBreak:GetBool()) then
+            self:Trigger(dmginfo:GetAttacker())
+        else
+            self:Remove()
+        end
 
         local effect = EffectData()
         effect:SetOrigin(self:GetPos())
