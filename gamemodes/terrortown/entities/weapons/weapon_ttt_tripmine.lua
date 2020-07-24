@@ -4,14 +4,14 @@ game.AddAmmoType({
     name = "neeve_tripmines"
 })
 
-SWEP.HoldType              = "normal"
+SWEP.HoldType              = "slam"
 
 if CLIENT then
     SWEP.PrintName         = "tripmine_name"
     SWEP.Slot              = 6
 
     SWEP.ViewModelFlip     = false
-    SWEP.ViewModelFOV      = 10
+    SWEP.ViewModelFOV      = 60
     SWEP.DrawCrosshair     = false
 
     SWEP.EquipMenuData = {
@@ -23,15 +23,14 @@ if CLIENT then
 end
 
 SWEP.Base                  = "weapon_tttbase"
-
-SWEP.ViewModel             = "models/weapons/v_crowbar.mdl"
+SWEP.ViewModel             = "models/weapons/c_slam.mdl"
 SWEP.WorldModel            = "models/weapons/w_slam.mdl"
 
 SWEP.Primary.ClipSize      = 1
 SWEP.Primary.DefaultClip   = 1
 SWEP.Primary.Automatic     = true
 SWEP.Primary.Ammo          = "neeve_tripmines"
-SWEP.Primary.Delay         = 1
+SWEP.Primary.Delay         = 2
 
 SWEP.Secondary.ClipSize    = -1
 SWEP.Secondary.DefaultClip = -1
@@ -46,6 +45,8 @@ SWEP.LimitedStock          = true
 SWEP.AllowDrop             = true
 SWEP.NoSights              = true
 
+SWEP.UseHands              = true
+
 local cvarTripminesBuyCount = CreateConVar(
     "ttt_tripmine_buy_count"
     , 1
@@ -58,12 +59,21 @@ function SWEP:PrimaryAttack()
         self:SetNextPrimaryFire(CurTime() + self.Primary.Delay)
         self:TakePrimaryAmmo(1)
         if (self:Ammo1() + self:Clip1() <= 0) then
-            self:Remove()
-        else
-            self:Reload()
+            timer.Simple(0.3, function()
+                if (self:IsValid() and self:Ammo1() + self:Clip1() <= 0) then
+                    self:Remove()
+                end
+            end)
         end
+
+        self:SendWeaponAnim(ACT_SLAM_TRIPMINE_ATTACH2)
+        timer.Simple(self.Primary.Delay - 0.5, function()
+            if (self:IsValid()) then
+                self:SendWeaponAnim(ACT_SLAM_TRIPMINE_DRAW)
+            end
+        end)
     else
-        self:SetNextPrimaryFire(CurTime() + 0.5)
+        self:SetNextPrimaryFire(CurTime())
     end
 end
 
@@ -71,8 +81,6 @@ function SWEP:Think()
     if (self:Clip1() == 0 and self:Ammo1() > 0) then
         self:TakePrimaryAmmo(1)
         self:SetClip1(1)
-    elseif (SERVER and self:Clip1() + self:Ammo1() == 0) then
-        self:Remove()
     end
 end
 
@@ -152,64 +160,66 @@ if CLIENT then
 end
 
 function SWEP:Deploy()
-    if (IsValid(self.Owner)) then
-        self.Owner:DrawViewModel(false)
-    end
+    self:SetNextPrimaryFire(CurTime())
+    self:SendWeaponAnim(ACT_SLAM_TRIPMINE_DRAW)
     return true
 end
 
 local laser = Material("sprites/bluelaser1")
 local wireframe = Material("models/wireframe")
-function SWEP:PostDrawViewModel(vm, weapon, ply)
-    local ply = self.Owner
-    if not IsValid(ply) then return end
 
-    if self.Planted then return end
+function SWEP:DrawHUD()
+    self.BaseClass.DrawHUD(self)
 
-    local ignore = {self.Owner, self}
-    local spos = ply:GetShootPos()
-    local epos = spos
-        + ply:GetAimVector() * 8000
+    cam.Start3D()
+        local ply = self.Owner
+        if not IsValid(ply) then return cam.End3D() end
 
-    local tr = util.TraceLine {
-        start    = spos
-        , endpos = epos
-        , filter = ignore
-        , mask   = MASK_SOLID
-    }
+        if self.Planted then return cam.End3D() end
 
-    if !tr.HitWorld
-        || tr.HitPos:Distance(tr.StartPos) > 80
-    then
-        return
-    end
+        local ignore = {self.Owner, self}
+        local spos = ply:EyePos()
+        local epos = spos
+            + ply:GetAimVector() * 8000
 
-    local matrix = Matrix()
-    matrix:Scale(Vector(0.75, 0.75, 0.25))
-    matrix:Scale(Vector(1, 1, 1) * 0.1)
-    matrix:Translate(Vector(0, 0, 2))
+        local tr = util.TraceLine {
+            start    = spos
+            , endpos = epos
+            , filter = ignore
+            , mask   = MASK_SOLID
+        }
 
-    local ang = tr.HitNormal:Angle()
-    ang:RotateAroundAxis(ang:Right(), -90)
+        if !tr.HitWorld
+            || tr.HitPos:Distance(tr.StartPos) > 80
+        then
+            return cam.End3D()
+        end
 
-    render.SetBlend(0.75)
-    render.SetMaterial(wireframe)
-    self.GhostModel:EnableMatrix("RenderMultiply", matrix)
-    self.GhostModel:SetPos(tr.HitPos)
-    self.GhostModel:SetNoDraw(true)
-    self.GhostModel:SetAngles(ang)
-    self.GhostModel:DrawModel()
-    render.SetBlend(1)
+        local matrix = Matrix()
+        matrix:Scale(Vector(0.75, 0.75, 0.25))
+        matrix:Translate(Vector(0, 0, 2))
 
-    local pos = self.GhostModel:GetPos()
-        + ang:Forward() * -0.2
-        + ang:Up()      * 0.1
+        local ang = tr.HitNormal:Angle()
+        ang:RotateAroundAxis(ang:Right(), -90)
 
-    render.SetMaterial(laser)
-    render.StartBeam(2)
-        render.AddBeam(pos, 0.5, 2, Color(255, 0, 0, 128))
-        render.AddBeam(pos + ang:Up() * 1, 0.5, 3, Color(255, 0, 0, 128))
-    render.EndBeam()
+        render.SetBlend(0.75)
+        render.SetMaterial(wireframe)
+        self.GhostModel:EnableMatrix("RenderMultiply", matrix)
+        self.GhostModel:SetPos(tr.HitPos)
+        self.GhostModel:SetNoDraw(true)
+        self.GhostModel:SetAngles(ang)
+        self.GhostModel:DrawModel()
+        render.SetBlend(1)
+
+        local pos = self.GhostModel:GetPos()
+            + ang:Forward() * -2.0 
+
+        render.SetMaterial(laser)
+        render.StartBeam(2)
+            render.AddBeam(pos, 0.5, 2, Color(255, 0, 0, 128))
+            render.AddBeam(pos + ang:Up() * 4, 0.5, 3, Color(255, 0, 0, 128))
+        render.EndBeam()
+    cam.End3D()
 end
 
 function SWEP:WasBought(buyer)
