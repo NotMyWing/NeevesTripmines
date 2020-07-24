@@ -60,6 +60,13 @@ local cvarExplodeOnBreak = CreateConVar(
     , "Defines whether the trip mine should explode when destroyed"
 )
 
+local cvarLaserOpacity = CreateConVar(
+    "ttt_tripmine_laser_opacity"
+    , 35
+    , bit.bor(FCVAR_ARCHIVE, FCVAR_REPLICATED)
+    , "Defines the trip mine laser opacity, from 0 to 100%"
+)
+
 local drawMatrix = Matrix()
 drawMatrix:Scale(Vector(0.75, 0.75, 0.25))
 drawMatrix:Translate(Vector(0, 0, -6))
@@ -214,9 +221,15 @@ if CLIENT then
     } )
 
     local laser = Material("sprites/bluelaser1")
-    local beamColor = Color(255, 0, 0, 92)
+    local beamColor, opacity
 
     hook.Add("PreDrawTranslucentRenderables", "Neeve Claymores Lasers", function()
+        local newOpacity = cvarLaserOpacity:GetInt()
+        if opacity != newOpacity then
+            opacity = cvarLaserOpacity:GetInt()
+            beamColor = Color(255, 0, 0, (opacity / 100) * 255)
+        end
+
         for k, v in pairs(ents.GetAll()) do
             if v.Enabled
                 && v:GetClass() == "ttt_tripmine"
