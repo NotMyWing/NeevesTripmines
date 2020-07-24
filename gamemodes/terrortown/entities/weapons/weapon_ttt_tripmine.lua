@@ -247,3 +247,9 @@ else
         end
     end)
 end
+
+function SWEP:Equip(newowner)
+    newowner:SetAmmo(newowner:GetAmmoCount("neeve_tripmines") + (self.StoredAmmo or 0), "neeve_tripmines")
+    self.StoredAmmo = 0
+    self.BaseClass.Equip(newowner)
+end
