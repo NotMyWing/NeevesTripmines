@@ -176,18 +176,20 @@ function ENT:OnTakeDamage(dmginfo)
     self:TakePhysicsDamage(dmginfo)
 
     self:SetHealth(self:Health() - dmginfo:GetDamage())
-    if self:Health() <= 0 then
+    if self:Health() <= 0 and not self.Dead then
+        self.Dead = true
+
         if (cvarExplodeOnBreak:GetBool()) then
-            self:Trigger(dmginfo:GetAttacker())
+            self:Trigger(dmginfo:GetAttacker(), true)
         else
+            local effect = EffectData()
+            effect:SetOrigin(self:GetPos())
+            util.Effect("cball_explode", effect)
+
+            sound.Play(zapsound, self:GetPos())
+
             self:Remove()
         end
-
-        local effect = EffectData()
-        effect:SetOrigin(self:GetPos())
-        util.Effect("cball_explode", effect)
-
-        sound.Play(zapsound, self:GetPos())
 
         if (IsValid(self:GetNWEntity("Owner"))) then
             LANG.Msg(self:GetNWEntity("Owner"), "tripmine_broken")
@@ -581,12 +583,12 @@ function ENT:GetLaserTrace()
     }
 end
 
-function ENT:Trigger(ent)
+function ENT:Trigger(ent, instant)
     if !self.Activated then
         self.Activated = true
         self:EmitSound("weapons/grenade/tick1.wav", 150, 100, 1)
 
-        timer.Simple(cvarActivationTime:GetFloat() || 0.25, function()
+        function callback()
             if !IsValid(self) then
                 return
             end
@@ -611,6 +613,37 @@ function ENT:Trigger(ent)
             util.Effect("Explosion", effect, true, true)
             util.BlastDamage(self, owner, pos, radius, dmg)
             self:Remove()
-        end)
+        end
+
+        if (instant) then
+            callback()
+        else
+            timer.Simple(cvarActivationTime:GetFloat() || 0.25, function()
+                if !IsValid(self) then
+                    return
+                end
+    
+                local pos = self:GetPos()
+                local effect = EffectData()
+                local radius = cvarTripMineBlastRadius:GetFloat() || 260
+                local dmg = cvarTripMineDamage:GetFloat() || 260
+    
+                effect:SetStart(pos)
+                effect:SetOrigin(pos)
+                effect:SetScale(radius * 0.3)
+                effect:SetRadius(radius)
+                effect:SetMagnitude(dmg)
+    
+                local owner = self:GetNWEntity("Owner")
+                if ent:IsPlayer() && ent:GetTraitor() then
+                    owner = ent
+                end
+    
+                self:SetOwner(owner)
+                util.Effect("Explosion", effect, true, true)
+                util.BlastDamage(self, owner, pos, radius, dmg)
+                self:Remove()
+            end)
+        end
     end
 end
