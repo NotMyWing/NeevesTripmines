@@ -93,8 +93,6 @@ function SWEP:TripmineStick()
         if tr.HitWorld then
             local tripmine = ents.Create("ttt_tripmine")
             if IsValid(tripmine) then
-                tripmine:PointAtEntity(ply)
-
                 local ent = util.TraceEntity({
                     start    = spos
                     , endpos = epos
@@ -108,8 +106,13 @@ function SWEP:TripmineStick()
 
                     tripmine:SetPos(ent.HitPos + ang:Up() * 2)
                     tripmine:SetAngles(ang)
-                    tripmine:SetOwner(ply)
+                    tripmine:SetNWEntity("Owner", ply)
                     tripmine:Spawn()
+                    tripmine.fingerprints = { ply }
+
+                    net.Start("Neeve Tripmines Notify")
+                        net.WriteEntity(ply)
+                    net.Send(GetTraitorFilter())
 
                     local phys = tripmine:GetPhysicsObject()
                     if IsValid(phys) then
@@ -216,4 +219,21 @@ function SWEP:WasBought(buyer)
             buyer:SetAmmo(buyer:GetAmmoCount("neeve_tripmines") + additional, "neeve_tripmines")
         end
     end
+end
+
+if (SERVER) then
+    util.AddNetworkString("Neeve Tripmines Notify")
+else
+    net.Receive("Neeve Tripmines Notify", function()
+        local ply = net.ReadEntity()
+        if (ply:IsValid() and ply:IsPlayer()) then
+            chat.AddText(Color( 255, 30, 40 ),
+                Format("(%s) ", string.upper(LANG.GetTranslation("traitor"))),
+                Color( 255, 200, 20),
+                ply:Name(),
+                Color( 255, 255, 200),
+                ": " .. LANG.GetTranslation("tripmine_i_have_planted")
+            )
+        end
+    end)
 end

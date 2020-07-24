@@ -76,21 +76,10 @@ function ENT:Initialize()
         self:SetUseType(SIMPLE_USE)
         self:SetMaxHealth(10)
     else
-        if LocalPlayer():GetTraitor() then
-            tripMines_guiWasRendering[self:EntIndex()] = nil
-
-            chat.AddText(Color( 255, 30, 40 ),
-                Format("(%s) ", string.upper(LANG.GetTranslation("traitor"))),
-                Color( 255, 200, 20),
-                self:GetOwner():Name(),
-                Color( 255, 255, 200),
-                ": " .. LANG.GetTranslation("tripmine_i_have_planted")
-            )
-        end
+        tripMines_guiWasRendering[self:EntIndex()] = nil
     end
 
     self:SetHealth(10)
-    self.fingerprints = { self.Owner }
 
     timer.Simple(cvarSleepTime:GetFloat() || 2, function()
         if (IsValid(self)) then
@@ -102,7 +91,7 @@ end
 function ENT:UseOverride(user)
     if IsValid(user)
         && user:IsPlayer()
-        && (user:IsActiveTraitor() || user == self.Owner)
+        && (user:IsActiveTraitor() || user == self:GetNWEntity("Owner"))
     then
         self:Remove()
         
@@ -139,8 +128,8 @@ function ENT:OnTakeDamage(dmginfo)
 
         sound.Play(zapsound, self:GetPos())
 
-        if (IsValid(self:GetOwner())) then
-            LANG.Msg(self:GetOwner(), "tripmine_broken")
+        if (IsValid(self:GetNWEntity("Owner"))) then
+            LANG.Msg(self:GetNWEntity("Owner"), "tripmine_broken")
         end
     end
 end
@@ -211,11 +200,12 @@ function ENT:Think()
                     effect:SetRadius(radius)
                     effect:SetMagnitude(dmg)
 
-                    local owner = self:GetOwner()
+                    local owner = self:GetNWEntity("Owner")
                     if ent:IsPlayer() && ent:GetTraitor() then
                         owner = ent
                     end
 
+                    self:SetOwner(owner)
                     util.Effect("Explosion", effect, true, true)
                     util.BlastDamage(self, owner, pos, radius, dmg)
                     self:Remove()
@@ -518,7 +508,7 @@ if CLIENT then
 
                     -- Draw the tooltip
                     if !cvarTripTooltipNoText_cl:GetBool() then
-                        local owner = IsValid(v:GetOwner()) && v:GetOwner()
+                        local owner = IsValid(v:GetNWEntity("Owner")) && v:GetNWEntity("Owner")
                         local text
                         if IsPlayer(owner) then
                             text = string.format(LANG.GetTranslation("tripmine_tooltip_careful"), owner:Name())
