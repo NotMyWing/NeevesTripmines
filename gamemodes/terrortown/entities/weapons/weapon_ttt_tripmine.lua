@@ -150,7 +150,7 @@ end
 
 if CLIENT then
     function SWEP:Initialize()
-        self:AddHUDHelp("tripmine_help_plant", nil, false)
+        self:AddHUDHelp("tripmine_help_plant", "tripmine_help_plant2", true)
 
         self.GhostModel = ClientsideModel("models/weapons/w_slam.mdl")
         self.GhostModel:SetNoDraw(true)
