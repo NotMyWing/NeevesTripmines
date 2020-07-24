@@ -81,17 +81,6 @@ local cvarActivationSound = CreateConVar(
     , "Defines whether the mine should emit sound when activated"
 )
 
-local drawMatrix = Matrix()
-drawMatrix:Scale(Vector(0.75, 0.75, 0.25))
-drawMatrix:Translate(Vector(0, 0, -6))
-
-function ENT:Draw()
-    local ang = self:GetAngles()
-
-    self:EnableMatrix("RenderMultiply", drawMatrix)
-    self:DrawModel()
-end
-
 local plantSound = Sound( "Weapon_SLAM.TripMineMode" )
 local activateSound = Sound("tripmine/stickybomblauncher_det.wav")
 
@@ -164,37 +153,21 @@ function ENT:UseOverride(user)
     end
 end
 
-local zapsound = Sound("npc/assassin/ball_zap1.wav")
+function ENT:GetLaserTrace()
+    local ang = self:GetAngles()
+    local pos = self:GetPos()
+        + ang:Forward() * -2.0
+        + ang:Up() * -1.33
 
-function ENT:OnTakeDamage(dmginfo)
-    if dmginfo:GetInflictor() == self
-        || dmginfo:GetAttacker() == self
-    then
-        return
-    end
-
-    self:TakePhysicsDamage(dmginfo)
-
-    self:SetHealth(self:Health() - dmginfo:GetDamage())
-    if self:Health() <= 0 and not self.Dead then
-        self.Dead = true
-
-        if (cvarExplodeOnBreak:GetBool()) then
-            self:Trigger(dmginfo:GetAttacker(), true)
-        else
-            local effect = EffectData()
-            effect:SetOrigin(self:GetPos())
-            util.Effect("cball_explode", effect)
-
-            sound.Play(zapsound, self:GetPos())
-
-            self:Remove()
+    return util.TraceLine {
+        start         = pos
+        , endpos      = pos + ang:Up() * (cvarLaserLength:GetFloat() || 512)
+        , mask        = MASK_SOLID
+        , filter      = function(ent)
+            return ent != self and ent:GetClass() != "ttt_tripmine"
         end
-
-        if (IsValid(self:GetNWEntity("Owner"))) then
-            LANG.Msg(self:GetNWEntity("Owner"), "tripmine_broken")
-        end
-    end
+        , ignoreworld = false
+    }
 end
 
 function ENT:Think()
@@ -247,9 +220,19 @@ if CLIENT then
         antialias = true,
     } )
 
+    local drawMatrix = Matrix()
+    drawMatrix:Scale(Vector(0.75, 0.75, 0.25))
+    drawMatrix:Translate(Vector(0, 0, -6))
+    
+    function ENT:Draw()
+        local ang = self:GetAngles()
+    
+        self:EnableMatrix("RenderMultiply", drawMatrix)
+        self:DrawModel()
+    end
+
     local laser = Material("sprites/bluelaser1")
     local beamColor, opacity
-
     hook.Add("PreDrawTranslucentRenderables", "Neeve Claymores Lasers", function()
         local newOpacity = cvarLaserOpacity:GetInt()
         if opacity != newOpacity then
@@ -552,61 +535,46 @@ if CLIENT then
 
         surface.DisableClipping(false)
     end)
-end
+else
+    local zapsound = Sound("npc/assassin/ball_zap1.wav")
 
-function ENT:GetLaserTrace()
-    local ang = self:GetAngles()
-    local pos = self:GetPos()
-        + ang:Forward() * -2.0
-        + ang:Up() * -1.33
-
-    return util.TraceLine {
-        start         = pos
-        , endpos      = pos + ang:Up() * (cvarLaserLength:GetFloat() || 512)
-        , mask        = MASK_SOLID
-        , filter      = function(ent)
-            return ent != self and ent:GetClass() != "ttt_tripmine"
-        end
-        , ignoreworld = false
-    }
-end
-
-function ENT:Trigger(ent, instant)
-    if !self.Activated then
-        self.Activated = true
-        self:EmitSound("weapons/grenade/tick1.wav", 150, 100, 1)
-
-        function callback()
-            if !IsValid(self) then
-                return
-            end
-
-            local pos = self:GetPos()
-            local effect = EffectData()
-            local radius = cvarTripMineBlastRadius:GetFloat() || 260
-            local dmg = cvarTripMineDamage:GetFloat() || 260
-
-            effect:SetStart(pos)
-            effect:SetOrigin(pos)
-            effect:SetScale(radius * 0.3)
-            effect:SetRadius(radius)
-            effect:SetMagnitude(dmg)
-
-            local owner = self:GetNWEntity("Owner")
-            if ent:IsPlayer() && ent:GetTraitor() then
-                owner = ent
-            end
-
-            self:SetOwner(owner)
-            util.Effect("Explosion", effect, true, true)
-            util.BlastDamage(self, owner, pos, radius, dmg)
-            self:Remove()
+    function ENT:OnTakeDamage(dmginfo)
+        if dmginfo:GetInflictor() == self
+            || dmginfo:GetAttacker() == self
+        then
+            return
         end
 
-        if (instant) then
-            callback()
-        else
-            timer.Simple(cvarActivationTime:GetFloat() || 0.25, function()
+        self:TakePhysicsDamage(dmginfo)
+
+        self:SetHealth(self:Health() - dmginfo:GetDamage())
+        if self:Health() <= 0 and not self.Dead then
+            self.Dead = true
+
+            if (cvarExplodeOnBreak:GetBool()) then
+                self:Trigger(dmginfo:GetAttacker(), true)
+            else
+                local effect = EffectData()
+                effect:SetOrigin(self:GetPos())
+                util.Effect("cball_explode", effect)
+
+                sound.Play(zapsound, self:GetPos())
+
+                self:Remove()
+            end
+
+            if (IsValid(self:GetNWEntity("Owner"))) then
+                LANG.Msg(self:GetNWEntity("Owner"), "tripmine_broken")
+            end
+        end
+    end
+
+    function ENT:Trigger(ent, instant)
+        if !self.Activated then
+            self.Activated = true
+            self:EmitSound("weapons/grenade/tick1.wav", 150, 100, 1)
+    
+            function callback()
                 if !IsValid(self) then
                     return
                 end
@@ -631,7 +599,38 @@ function ENT:Trigger(ent, instant)
                 util.Effect("Explosion", effect, true, true)
                 util.BlastDamage(self, owner, pos, radius, dmg)
                 self:Remove()
-            end)
+            end
+    
+            if (instant) then
+                callback()
+            else
+                timer.Simple(cvarActivationTime:GetFloat() || 0.25, function()
+                    if !IsValid(self) then
+                        return
+                    end
+        
+                    local pos = self:GetPos()
+                    local effect = EffectData()
+                    local radius = cvarTripMineBlastRadius:GetFloat() || 260
+                    local dmg = cvarTripMineDamage:GetFloat() || 260
+        
+                    effect:SetStart(pos)
+                    effect:SetOrigin(pos)
+                    effect:SetScale(radius * 0.3)
+                    effect:SetRadius(radius)
+                    effect:SetMagnitude(dmg)
+        
+                    local owner = self:GetNWEntity("Owner")
+                    if ent:IsPlayer() && ent:GetTraitor() then
+                        owner = ent
+                    end
+        
+                    self:SetOwner(owner)
+                    util.Effect("Explosion", effect, true, true)
+                    util.BlastDamage(self, owner, pos, radius, dmg)
+                    self:Remove()
+                end)
+            end
         end
     end
 end
