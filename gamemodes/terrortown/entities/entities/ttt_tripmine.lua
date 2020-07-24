@@ -77,6 +77,7 @@ function ENT:Initialize()
         self:SetMaxHealth(10)
     else
         tripMines_guiWasRendering[self:EntIndex()] = nil
+        self.InitTime = CurTime()
     end
 
     self:SetHealth(10)
@@ -360,7 +361,8 @@ if CLIENT then
                 local minDst = cvarTripTooltipDistance_cl:GetFloat()
                 if minDst >= distance then
                     -- Define the alpha modifier based on the current distance
-                    local alphaMod = 2 * math.Clamp(1 - (distance / minDst), 0, 1)
+                    local timeMod = math.min(1, (CurTime() - v.InitTime) / (cvarSleepTime:GetFloat() + 2))
+                    local alphaMod = timeMod * 2 * math.Clamp(1 - (distance / minDst), 0, 1)
 
                     local laserVec
                     do
