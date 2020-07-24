@@ -85,6 +85,22 @@ function ENT:Initialize()
     timer.Simple(cvarSleepTime:GetFloat() || 2, function()
         if (IsValid(self)) then
             self.Enabled = true
+
+            -- Create a "raytracing" dummy
+            if (SERVER) then
+                local dummy = ents.Create( "ttt_tripmine_laser_dummy" )
+                local ang = self:GetAngles()
+                local pos = self:GetPos()
+                    + ang:Forward() * -2.0
+                    + ang:Up() * -1.33
+        
+                dummy:SetPos(pos)
+                dummy:SetAngles(ang)
+                dummy.tripmine = self
+                dummy:Spawn()
+        
+                dummy:SetSize(512)
+            end
         end
     end)
 end
@@ -136,84 +152,6 @@ function ENT:OnTakeDamage(dmginfo)
 end
 
 function ENT:Think()
-    if SERVER then
-        self:NextThink(CurTime())
-        if self.Enabled then
-            local ang = self:GetAngles()
-            local pos = self:GetPos()
-                + ang:Forward() * -2.0
-                + ang:Up() * -1.33
-
-            local trLine = util.TraceLine {
-                start         = pos
-                , endpos      = pos + ang:Up() * (cvarLaserLength:GetFloat() || 512)
-                , mask        = MASK_SOLID
-                , filter      = self
-                , ignoreworld = false
-            }
-            
-            local ent = trLine.Entity
-
-            if !IsValid(ent) then
-                local dist = trLine.StartPos:Distance(trLine.HitPos)
-                local tr = util.TraceHull {
-                    start    = pos
-                    , endpos = pos + ang:Up() * dist
-                    , maxs   = ang:Forward() *  4 + ang:Right() *  4
-                    , mins   = ang:Forward() * -4 + ang:Right() * -4
-                    , mask   = MASK_SOLID
-                    , filter = self
-                }
-
-                ent = tr.Entity
-            end
-
-            if !IsValid(ent) then
-                return
-            end
-
-            local class = ent:GetClass()
-
-            if !self.Activated
-                && ent:IsPlayer()
-                && !(
-                    class:find("static")
-                    || class:find("door")
-                    || class:find("tripmine")
-                )
-            then
-                self.Activated = true
-                self:EmitSound("weapons/grenade/tick1.wav", 150, 100, 1)
-
-                timer.Simple(cvarActivationTime:GetFloat() || 0.25, function()
-                    if !IsValid(self) then
-                        return
-                    end
-
-                    local pos = self:GetPos()
-                    local effect = EffectData()
-                    local radius = cvarTripMineBlastRadius:GetFloat() || 260
-                    local dmg = cvarTripMineDamage:GetFloat() || 260
-
-                    effect:SetStart(pos)
-                    effect:SetOrigin(pos)
-                    effect:SetScale(radius * 0.3)
-                    effect:SetRadius(radius)
-                    effect:SetMagnitude(dmg)
-
-                    local owner = self:GetNWEntity("Owner")
-                    if ent:IsPlayer() && ent:GetTraitor() then
-                        owner = ent
-                    end
-
-                    self:SetOwner(owner)
-                    util.Effect("Explosion", effect, true, true)
-                    util.BlastDamage(self, owner, pos, radius, dmg)
-                    self:Remove()
-                end)
-            end
-        end
-    end
     return true
 end
 
@@ -576,4 +514,53 @@ if CLIENT then
 
         surface.DisableClipping(false)
     end)
+end
+
+function ENT:GetLaserTrace()
+    local ang = self:GetAngles()
+    local pos = self:GetPos()
+        + ang:Forward() * -2.0
+        + ang:Up() * -1.33
+
+    return util.TraceLine {
+        start         = pos
+        , endpos      = pos + ang:Up() * (cvarLaserLength:GetFloat() || 512)
+        , mask        = MASK_SOLID
+        , filter      = self
+        , ignoreworld = false
+    }
+end
+
+function ENT:Trigger(ent)
+    if !self.Activated then
+        self.Activated = true
+        self:EmitSound("weapons/grenade/tick1.wav", 150, 100, 1)
+
+        timer.Simple(cvarActivationTime:GetFloat() || 0.25, function()
+            if !IsValid(self) then
+                return
+            end
+
+            local pos = self:GetPos()
+            local effect = EffectData()
+            local radius = cvarTripMineBlastRadius:GetFloat() || 260
+            local dmg = cvarTripMineDamage:GetFloat() || 260
+
+            effect:SetStart(pos)
+            effect:SetOrigin(pos)
+            effect:SetScale(radius * 0.3)
+            effect:SetRadius(radius)
+            effect:SetMagnitude(dmg)
+
+            local owner = self:GetNWEntity("Owner")
+            if ent:IsPlayer() && ent:GetTraitor() then
+                owner = ent
+            end
+
+            self:SetOwner(owner)
+            util.Effect("Explosion", effect, true, true)
+            util.BlastDamage(self, owner, pos, radius, dmg)
+            self:Remove()
+        end)
+    end
 end
