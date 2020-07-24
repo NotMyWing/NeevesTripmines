@@ -261,15 +261,7 @@ if CLIENT then
             if v.Enabled
                 && v:GetClass() == "ttt_tripmine"
             then
-                local ang = v:GetAngles()
-                local pos = v:GetPos() + ang:Forward() * -2.0 + ang:Up() * -1.3
-                local tr = util.TraceLine {
-                    start         = pos
-                    , endpos      = pos + ang:Up() * (cvarLaserLength:GetFloat() || 512)
-                    , filter      = v
-                    , mask        = MASK_SOLID
-                    , ignoreworld = false
-                }
+                local tr = v:GetLaserTrace()
 
                 render.SetMaterial(laser)
                 render.StartBeam(2)
@@ -333,13 +325,7 @@ if CLIENT then
                     + ang:Forward() * -2.0
                     + ang:Up() * -1.3
 
-                local tr = util.TraceLine {
-                    start         = pos
-                    , endpos      = pos + ang:Up() * (cvarLaserLength:GetFloat() || 512)
-                    , filter      = v
-                    , mask        = MASK_SOLID
-                    , ignoreworld = false
-                }
+                local tr = v:GetLaserTrace()
 
                 -- Get the dot of the player position to the laser
                 local distance = (tr.StartPos):Distance(tr.HitPos)
@@ -578,7 +564,9 @@ function ENT:GetLaserTrace()
         start         = pos
         , endpos      = pos + ang:Up() * (cvarLaserLength:GetFloat() || 512)
         , mask        = MASK_SOLID
-        , filter      = self
+        , filter      = function(ent)
+            return ent != self and ent:GetClass() != "ttt_tripmine"
+        end
         , ignoreworld = false
     }
 end
