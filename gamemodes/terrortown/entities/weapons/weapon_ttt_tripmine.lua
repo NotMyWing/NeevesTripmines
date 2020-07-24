@@ -58,9 +58,9 @@ function SWEP:PrimaryAttack()
     if (self:Clip1() > 0 and self:TripmineStick()) then
         self:SetNextPrimaryFire(CurTime() + self.Primary.Delay)
         self:TakePrimaryAmmo(1)
-        if (self:Ammo1() + self:Clip1() <= 0) then
+        if (self:Clip1() <= 0) then
             timer.Simple(0.3, function()
-                if (self:IsValid() and self:Ammo1() + self:Clip1() <= 0) then
+                if (self:IsValid() and self:Clip1() <= 0) then
                     self:Remove()
                 end
             end)
@@ -78,10 +78,11 @@ function SWEP:PrimaryAttack()
 end
 
 function SWEP:Think()
-    if (self:Clip1() == 0 and self:Ammo1() > 0) then
-        self:TakePrimaryAmmo(1)
-        self:SetClip1(1)
+    if self.Primary.ClipSize < self:Clip1() then
+        self.Primary.ClipSize = self:Clip1()
     end
+
+    return true
 end
 
 local throwsound = Sound("Weapon_SLAM.SatchelThrow")
@@ -226,7 +227,7 @@ function SWEP:WasBought(buyer)
     if IsValid(buyer) then
         local additional = cvarTripminesBuyCount:GetInt() - 1
         if additional > 0 then
-            buyer:SetAmmo(buyer:GetAmmoCount("neeve_tripmines") + additional, "neeve_tripmines")
+            self:SetClip1(self:Clip1() + additional)
         end
     end
 end
@@ -249,7 +250,9 @@ else
 end
 
 function SWEP:Equip(newowner)
-    newowner:SetAmmo(newowner:GetAmmoCount("neeve_tripmines") + (self.StoredAmmo or 0), "neeve_tripmines")
+    self:SetClip1(self:Clip1() + (self.StoredAmmo or 0))
+    self.Primary.ClipSize = 0
+
     self.StoredAmmo = 0
     self.BaseClass.Equip(newowner)
 end

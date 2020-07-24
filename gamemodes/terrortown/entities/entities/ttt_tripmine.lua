@@ -120,7 +120,8 @@ function ENT:UseOverride(user)
         self:Remove()
         
         if (user:HasWeapon("weapon_ttt_tripmine")) then
-            user:SetAmmo(user:GetAmmoCount("neeve_tripmines") + 1, "neeve_tripmines")
+            local wep = user:GetWeapon("weapon_ttt_tripmine")
+            wep:SetClip1(wep:Clip1() + 1)
         else
             local wep = user:Give("weapon_ttt_tripmine")
             if IsValid(wep) then
